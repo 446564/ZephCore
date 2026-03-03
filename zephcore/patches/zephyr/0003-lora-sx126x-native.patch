@@ -1,5 +1,5 @@
 diff --git a/drivers/lora/native/sx126x/sx126x.c b/drivers/lora/native/sx126x/sx126x.c
-index 8e0ca45c271..eb9342a13b9 100644
+index 37807cebe38..ecabeb9431f 100644
 --- a/drivers/lora/native/sx126x/sx126x.c
 +++ b/drivers/lora/native/sx126x/sx126x.c
 @@ -9,10 +9,19 @@
@@ -49,35 +49,7 @@ index 8e0ca45c271..eb9342a13b9 100644
  
  	return sx126x_hal_write_cmd(dev, SX126X_CMD_CALIBRATE_IMAGE, buf, 2);
  }
-@@ -219,6 +216,14 @@ static int sx126x_configure_pa_and_tx_params(const struct device *dev,
- 	int8_t tx_power;
- 	int ret;
- 
-+	/* Save OCP register — SetPaConfig resets it to a chip default. */
-+	uint8_t ocp;
-+
-+	ret = sx126x_hal_read_regs(dev, SX126X_REG_OCP_CONFIG, &ocp, 1);
-+	if (ret < 0) {
-+		return ret;
-+	}
-+
- 	if (config->is_sx1261) {
- 		/*
- 		 * SX1261: Low power PA, up to +15 dBm
-@@ -247,6 +252,12 @@ static int sx126x_configure_pa_and_tx_params(const struct device *dev,
- 		tx_power = CLAMP(power, SX1262_MIN_POWER, SX1262_MAX_POWER);
- 	}
- 
-+	/* Restore OCP register after SetPaConfig. */
-+	ret = sx126x_hal_write_regs(dev, SX126X_REG_OCP_CONFIG, &ocp, 1);
-+	if (ret < 0) {
-+		return ret;
-+	}
-+
- 	uint8_t buf[2] = { (uint8_t)tx_power, ramp_time };
- 
- 	return sx126x_hal_write_cmd(dev, SX126X_CMD_SET_TX_PARAMS, buf, 2);
-@@ -267,6 +278,7 @@ static int sx126x_set_packet_params(const struct device *dev,
+@@ -217,6 +214,7 @@ static int sx126x_set_packet_params(const struct device *dev,
  				    uint8_t invert_iq)
  {
  	uint8_t buf[6];
@@ -85,7 +57,7 @@ index 8e0ca45c271..eb9342a13b9 100644
  
  	sys_put_be16(preamble_len, &buf[0]);
  	buf[2] = header_type;
-@@ -274,7 +286,31 @@ static int sx126x_set_packet_params(const struct device *dev,
+@@ -224,7 +222,31 @@ static int sx126x_set_packet_params(const struct device *dev,
  	buf[4] = crc_mode;
  	buf[5] = invert_iq;
  
@@ -118,7 +90,7 @@ index 8e0ca45c271..eb9342a13b9 100644
  }
  
  static int sx126x_set_sync_word(const struct device *dev, bool public_network)
-@@ -291,8 +327,24 @@ static int sx126x_set_sync_word(const struct device *dev, bool public_network)
+@@ -241,8 +263,24 @@ static int sx126x_set_sync_word(const struct device *dev, bool public_network)
  static int sx126x_set_rx_gain(const struct device *dev, bool boosted)
  {
  	uint8_t val = boosted ? SX126X_RX_GAIN_BOOSTED : SX126X_RX_GAIN_POWER_SAVING;
@@ -144,7 +116,7 @@ index 8e0ca45c271..eb9342a13b9 100644
  }
  
  static int sx126x_set_tx(const struct device *dev, uint32_t timeout_ms)
-@@ -307,6 +359,7 @@ static int sx126x_set_tx(const struct device *dev, uint32_t timeout_ms)
+@@ -257,6 +295,7 @@ static int sx126x_set_tx(const struct device *dev, uint32_t timeout_ms)
  static int sx126x_set_rx(const struct device *dev, uint32_t timeout_ms)
  {
  	uint32_t timeout;
@@ -152,7 +124,7 @@ index 8e0ca45c271..eb9342a13b9 100644
  
  	if (timeout_ms == 0) {
  		timeout = SX126X_RX_TIMEOUT_CONTINUOUS;
-@@ -317,7 +370,23 @@ static int sx126x_set_rx(const struct device *dev, uint32_t timeout_ms)
+@@ -267,7 +306,23 @@ static int sx126x_set_rx(const struct device *dev, uint32_t timeout_ms)
  	uint8_t buf[3];
  
  	sys_put_be24(timeout, buf);
@@ -177,7 +149,7 @@ index 8e0ca45c271..eb9342a13b9 100644
  }
  
  static int sx126x_get_rx_buffer_status(const struct device *dev,
-@@ -341,12 +410,18 @@ static int sx126x_get_packet_status(const struct device *dev,
+@@ -291,12 +346,18 @@ static int sx126x_get_packet_status(const struct device *dev,
  	uint8_t buf[3];
  	int ret;
  
@@ -198,7 +170,7 @@ index 8e0ca45c271..eb9342a13b9 100644
  	}
  
  	return ret;
-@@ -419,6 +494,21 @@ static int sx126x_chip_init(const struct device *dev)
+@@ -362,6 +423,21 @@ static int sx126x_chip_init(const struct device *dev)
  		return ret;
  	}
  
@@ -217,10 +189,10 @@ index 8e0ca45c271..eb9342a13b9 100644
 +		}
 +	}
 +
- 	/* Configure IRQs on DIO1: TX done, RX done, timeout */
- 	uint16_t irq_mask = SX126X_IRQ_TX_DONE | SX126X_IRQ_RX_DONE |
- 			    SX126X_IRQ_RX_TX_TIMEOUT | SX126X_IRQ_CRC_ERR;
-@@ -443,7 +533,7 @@ static void sx126x_dio1_callback(const struct device *dev)
+ 	/* Set packet type to LoRa */
+ 	ret = sx126x_set_packet_type(dev, SX126X_PACKET_TYPE_LORA);
+ 	if (ret < 0) {
+@@ -393,7 +469,7 @@ static void sx126x_dio1_callback(const struct device *dev)
  {
  	struct sx126x_data *data = dev->data;
  
@@ -229,7 +201,7 @@ index 8e0ca45c271..eb9342a13b9 100644
  }
  
  static void sx126x_set_rf_path(const struct device *dev, bool enable, bool tx)
-@@ -451,11 +541,107 @@ static void sx126x_set_rf_path(const struct device *dev, bool enable, bool tx)
+@@ -401,11 +477,107 @@ static void sx126x_set_rf_path(const struct device *dev, bool enable, bool tx)
  	const struct sx126x_hal_config *config = dev->config;
  
  	sx126x_hal_set_antenna_enable(dev, enable);
@@ -338,7 +310,7 @@ index 8e0ca45c271..eb9342a13b9 100644
  static void sx126x_handle_irq_tx_done(const struct device *dev)
  {
  	struct sx126x_data *data = dev->data;
-@@ -510,12 +696,23 @@ static void sx126x_handle_irq_rx_done(const struct device *dev, uint16_t irq_sta
+@@ -460,12 +632,23 @@ static void sx126x_handle_irq_rx_done(const struct device *dev, uint16_t irq_sta
  
  	/* Handle async callback or signal sync receiver */
  	if (data->rx_cb != NULL) {
@@ -368,7 +340,7 @@ index 8e0ca45c271..eb9342a13b9 100644
  	} else {
  		/* Sync mode */
  		atomic_set(&data->state, SX126X_STATE_IDLE);
-@@ -621,6 +818,29 @@ static int sx126x_lora_config(const struct device *dev,
+@@ -574,6 +757,29 @@ static int sx126x_lora_config(const struct device *dev,
  		goto out;
  	}
  
@@ -398,7 +370,7 @@ index 8e0ca45c271..eb9342a13b9 100644
  	/* Set sync word */
  	ret = sx126x_set_sync_word(dev, config->public_network);
  	if (ret < 0) {
-@@ -691,6 +911,29 @@ static int sx126x_lora_send_async(const struct device *dev,
+@@ -644,6 +850,29 @@ static int sx126x_lora_send_async(const struct device *dev,
  	/* Enable antenna and set TX path */
  	sx126x_set_rf_path(dev, true, true);
  
@@ -428,7 +400,7 @@ index 8e0ca45c271..eb9342a13b9 100644
  	/* Start transmission with 10 second timeout */
  	ret = sx126x_set_tx(dev, 10000);
  	if (ret < 0) {
-@@ -974,6 +1217,75 @@ static int sx126x_lora_test_cw(const struct device *dev, uint32_t frequency,
+@@ -927,6 +1156,75 @@ static int sx126x_lora_test_cw(const struct device *dev, uint32_t frequency,
  	return 0;
  }
  
@@ -501,10 +473,10 @@ index 8e0ca45c271..eb9342a13b9 100644
 +	k_mutex_unlock(&data->lock);
 +}
 +
- static const struct lora_driver_api sx126x_lora_api = {
+ static DEVICE_API(lora, sx126x_lora_api) = {
  	.config = sx126x_lora_config,
  	.send = sx126x_lora_send,
-@@ -999,6 +1311,14 @@ static int sx126x_init(const struct device *dev)
+@@ -952,6 +1250,14 @@ static int sx126x_init(const struct device *dev)
  	data->dev = dev;
  	atomic_set(&data->state, SX126X_STATE_IDLE);
  	data->config_valid = false;
@@ -537,10 +509,42 @@ index 1490a010254..ef5b15502db 100644
  
  #endif /* ZEPHYR_DRIVERS_LORA_SX126X_SX126X_INTERNAL_H_ */
 diff --git a/drivers/lora/native/sx126x/sx126x_hal.c b/drivers/lora/native/sx126x/sx126x_hal.c
-index bdf962e3343..de60d18b694 100644
+index 34f7089584f..e2253cf8193 100644
 --- a/drivers/lora/native/sx126x/sx126x_hal.c
 +++ b/drivers/lora/native/sx126x/sx126x_hal.c
-@@ -101,8 +101,16 @@ bool sx126x_hal_is_busy(const struct device *dev)
+@@ -203,6 +203,14 @@ int sx126x_hal_configure_tx_params(const struct device *dev, int8_t power,
+ 	int8_t tx_power;
+ 	int ret;
+ 
++	/* Save OCP register — SetPaConfig resets it to a chip default. */
++	uint8_t ocp;
++
++	ret = sx126x_hal_read_regs(dev, SX126X_REG_OCP, &ocp, 1);
++	if (ret < 0) {
++		return ret;
++	}
++
+ 	if (config->is_sx1261) {
+ 		/*
+ 		 * SX1261: Low power PA, up to +15 dBm
+@@ -231,6 +239,12 @@ int sx126x_hal_configure_tx_params(const struct device *dev, int8_t power,
+ 		tx_power = CLAMP(power, SX1262_MIN_POWER, SX1262_MAX_POWER);
+ 	}
+ 
++	/* Restore OCP register after SetPaConfig. */
++	ret = sx126x_hal_write_regs(dev, SX126X_REG_OCP, &ocp, 1);
++	if (ret < 0) {
++		return ret;
++	}
++
+ 	uint8_t buf[2] = { (uint8_t)tx_power, ramp_time };
+ 
+ 	return sx126x_hal_write_cmd(dev, SX126X_CMD_SET_TX_PARAMS, buf, 2);
+diff --git a/drivers/lora/native/sx126x/sx126x_hal_common.c b/drivers/lora/native/sx126x/sx126x_hal_common.c
+index 77186e273d9..75d1c28f7e7 100644
+--- a/drivers/lora/native/sx126x/sx126x_hal_common.c
++++ b/drivers/lora/native/sx126x/sx126x_hal_common.c
+@@ -46,8 +46,16 @@ static int spi_transfer(const struct spi_dt_spec *spi,
  
  int sx126x_hal_wait_busy(const struct device *dev, uint32_t timeout_ms)
  {
@@ -559,10 +563,10 @@ index bdf962e3343..de60d18b694 100644
  		LOG_WRN("Busy timeout after %u ms", timeout_ms);
  		return -ETIMEDOUT;
 diff --git a/drivers/lora/native/sx126x/sx126x_regs.h b/drivers/lora/native/sx126x/sx126x_regs.h
-index 9942838494a..e6cb127d8a3 100644
+index 7f55c9b96e2..76c5319a73c 100644
 --- a/drivers/lora/native/sx126x/sx126x_regs.h
 +++ b/drivers/lora/native/sx126x/sx126x_regs.h
-@@ -180,9 +180,19 @@
+@@ -180,6 +180,11 @@
  #define SX126X_RX_GAIN_POWER_SAVING         0x94
  #define SX126X_RX_GAIN_BOOSTED              0x96
  
@@ -573,12 +577,4 @@ index 9942838494a..e6cb127d8a3 100644
 +
  /* TX Clamp Config (workaround for SX1262) */
  #define SX126X_REG_TX_CLAMP_CFG             0x08D8
- 
-+/* OCP (Over-Current Protection) configuration.
-+ * SetPaConfig resets this to a chip default — save/restore around
-+ * PA configuration to preserve any custom OCP setting. */
-+#define SX126X_REG_OCP_CONFIG               0x08E7
-+
- /* IQ Polarity (workaround) */
- #define SX126X_REG_IQ_POLARITY              0x0736
  
