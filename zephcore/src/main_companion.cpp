@@ -288,18 +288,22 @@ static void mesh_event_loop(void)
 			gps_process_event();
 		}
 
-		/* Run mesh loop - handles all pending work:
-		 * - Process received LoRa packets
-		 * - Check TX completion
-		 * - Timeout handling
-		 * - Noise floor calibration (runs when loop is called)
-		 */
-		if (companion_mesh_ptr) {
+		/* Packet processing — only on radio/BLE/TX events */
+		if (companion_mesh_ptr &&
+		    (events & (MESH_EVENT_LORA_RX | MESH_EVENT_LORA_TX_DONE |
+			       MESH_EVENT_BLE_RX | MESH_EVENT_TX_DRAIN))) {
 			companion_mesh_ptr->loop();
 		}
 
-		/* Periodic UI refresh (every housekeeping cycle = 5s) */
+		/* Periodic housekeeping — maintenance + UI refresh */
 		if (events & MESH_EVENT_HOUSEKEEPING) {
+			/* Radio maintenance: noise floor calibration, AGC reset,
+			 * RX watchdog.  Separated from loop() so these never run
+			 * on packet-driven events. */
+			if (companion_mesh_ptr) {
+				companion_mesh_ptr->maintenanceLoop();
+			}
+
 			mesh_housekeeping_ui_refresh();
 		}
 #endif

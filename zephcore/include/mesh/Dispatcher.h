@@ -87,7 +87,7 @@ class Dispatcher {
 	uint32_t cad_busy_start;
 	DutyCycleTracker _duty_cycle;
 	uint32_t radio_nonrx_start;
-	uint32_t next_floor_calib_time, next_agc_reset_time;
+	uint32_t next_agc_reset_time;
 	bool prev_isrecv_mode;
 	uint32_t n_sent_flood, n_sent_direct;
 	uint32_t n_recv_flood, n_recv_direct;
@@ -120,6 +120,7 @@ protected:
 public:
 	void begin();
 	void loop();
+	void maintenanceLoop();
 	Packet *obtainNewPacket();
 	void releasePacket(Packet *packet);
 	void sendPacket(Packet *packet, uint8_t priority, uint32_t delay_millis = 0);

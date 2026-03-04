@@ -22,7 +22,6 @@ LOG_MODULE_REGISTER(zephcore_dispatcher, CONFIG_ZEPHCORE_LORA_LOG_LEVEL);
 namespace mesh {
 
 #define MAX_RX_DELAY_MILLIS   32000
-#define NOISE_FLOOR_CALIB_INTERVAL 2000
 
 Dispatcher::Dispatcher(Radio &radio, MillisecondClock &ms, PacketManager &mgr)
 	: _radio(&radio), _ms(&ms), _mgr(&mgr)
@@ -31,7 +30,7 @@ Dispatcher::Dispatcher(Radio &radio, MillisecondClock &ms, PacketManager &mgr)
 	total_air_time = rx_air_time = 0;
 	next_tx_time = 0;
 	cad_busy_start = 0;
-	next_floor_calib_time = next_agc_reset_time = 0;
+	next_agc_reset_time = 0;
 	_err_flags = 0;
 	_duty_cycle.init(0);
 	radio_nonrx_start = 0;
@@ -94,22 +93,6 @@ uint32_t Dispatcher::getCADFailMaxDuration() const
 
 void Dispatcher::loop()
 {
-	if (millisHasNowPassed(next_floor_calib_time)) {
-		_radio->triggerNoiseFloorCalibrate(getInterferenceThreshold());
-		next_floor_calib_time = futureMillis(NOISE_FLOOR_CALIB_INTERVAL);
-	}
-
-	bool is_recv = _radio->isInRecvMode();
-	if (is_recv != prev_isrecv_mode) {
-		prev_isrecv_mode = is_recv;
-		if (!is_recv) {
-			radio_nonrx_start = (uint32_t)_ms->getMillis();
-		}
-	}
-	if (!is_recv && (uint32_t)_ms->getMillis() - radio_nonrx_start > 8000) {
-		_err_flags |= ERR_EVENT_STARTRX_TIMEOUT;
-	}
-
 	if (outbound) {
 		if (_radio->isSendComplete()) {
 			uint32_t t = (uint32_t)_ms->getMillis() - outbound_start;
@@ -135,11 +118,6 @@ void Dispatcher::loop()
 		next_agc_reset_time = futureMillis(getAGCResetInterval());
 	}
 
-	if (getAGCResetInterval() > 0 && millisHasNowPassed(next_agc_reset_time)) {
-		_radio->resetAGC();
-		next_agc_reset_time = futureMillis(getAGCResetInterval());
-	}
-
 	{
 		Packet *pkt = _mgr->getNextInbound((uint32_t)_ms->getMillis());
 		if (pkt) {
@@ -148,6 +126,30 @@ void Dispatcher::loop()
 	}
 	checkRecv();
 	checkSend();
+}
+
+void Dispatcher::maintenanceLoop()
+{
+	/* Noise floor calibration — one EMA tick per housekeeping cycle */
+	_radio->triggerNoiseFloorCalibrate(getInterferenceThreshold());
+
+	/* RX mode watchdog — detect if radio is stuck outside RX */
+	bool is_recv = _radio->isInRecvMode();
+	if (is_recv != prev_isrecv_mode) {
+		prev_isrecv_mode = is_recv;
+		if (!is_recv) {
+			radio_nonrx_start = (uint32_t)_ms->getMillis();
+		}
+	}
+	if (!is_recv && (uint32_t)_ms->getMillis() - radio_nonrx_start > 8000) {
+		_err_flags |= ERR_EVENT_STARTRX_TIMEOUT;
+	}
+
+	/* AGC reset — periodic warm sleep + recalibration */
+	if (getAGCResetInterval() > 0 && millisHasNowPassed(next_agc_reset_time)) {
+		_radio->resetAGC();
+		next_agc_reset_time = futureMillis(getAGCResetInterval());
+	}
 }
 
 bool Dispatcher::tryParsePacket(Packet *pkt, const uint8_t *raw, int len)

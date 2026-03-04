@@ -328,13 +328,25 @@ static void repeater_event_loop(void)
 		}
 
 #ifdef ZEPHCORE_LORA
-		if (repeater_mesh_ptr) {
+		/* Packet processing — only on radio/CLI/TX events */
+		if (repeater_mesh_ptr &&
+		    (events & (MESH_EVENT_LORA_RX | MESH_EVENT_LORA_TX_DONE |
+			       MESH_EVENT_CLI_RX | MESH_EVENT_TX_DRAIN))) {
 			repeater_mesh_ptr->loop();
 		}
 #endif
 
-		/* Periodic housekeeping — update display with live data */
+		/* Periodic housekeeping — maintenance + display refresh */
 		if (events & MESH_EVENT_HOUSEKEEPING) {
+#ifdef ZEPHCORE_LORA
+			/* Radio maintenance: noise floor calibration, AGC reset,
+			 * RX watchdog.  Separated from loop() so these never run
+			 * on packet-driven events. */
+			if (repeater_mesh_ptr) {
+				repeater_mesh_ptr->maintenanceLoop();
+			}
+#endif
+
 			ui_set_clock(rtc_clock.getCurrentTime());
 
 #ifdef ZEPHCORE_LORA
