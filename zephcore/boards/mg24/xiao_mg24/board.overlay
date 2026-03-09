@@ -29,6 +29,11 @@
 	/delete-node/ zephyr,user;
 };
 
+/* Enable SEMAILBOX — hardware crypto + TRNG (entropy source for mbedTLS/BLE) */
+&se {
+	status = "okay";
+};
+
 /* Disable I2C0 — default pins PC4(SCL)/PC5(SDA) conflict with NSS/RXEN */
 &i2c0 {
 	status = "disabled";
