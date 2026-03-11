@@ -1,0 +1,37 @@
+/*
+ * ThinkNode M6 formatter overlay — minimal drivers, single LittleFS instance.
+ *
+ * The M6 main DTS includes both filesystem.dtsi (/lfs) and qspi-ext.dtsi
+ * (/ext), giving two LittleFS instances. Each needs ~8-10KB RAM for block
+ * caches; two instances overflow the formatter's RAM budget. Drop /ext here
+ * — the QSPI storage partition node remains so main.c can still erase it via
+ * FIXED_PARTITION_EXISTS(qspi_storage_partition).
+ *
+ * Also replace regulator-fixed power-enable nodes with gpio-hogs so
+ * CONFIG_REGULATOR is not forced on by regulator-boot-on.
+ */
+
+/* Remove /ext LittleFS fstab — formatter only needs one LittleFS instance */
+/delete-node/ &qspi_lfs;
+
+/* Remove regulator-fixed nodes and replace with gpio-hogs */
+/delete-node/ &pwr_enable;
+/delete-node/ &qspi_flash_enable;
+
+&gpio0 {
+	/* Board power enable (PIN_PWR_EN = P0.27) */
+	pwr-en-hog {
+		gpio-hog;
+		gpios = <27 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "PWR Enable";
+	};
+
+	/* QSPI flash enable (QSPI_FLASH_EN = P0.21) — must be HIGH before flash responds */
+	qspi-flash-en-hog {
+		gpio-hog;
+		gpios = <21 GPIO_ACTIVE_HIGH>;
+		output-high;
+		line-name = "QSPI Flash Enable";
+	};
+};

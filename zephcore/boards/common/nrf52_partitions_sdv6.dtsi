@@ -6,7 +6,7 @@
  * Use THIS file instead of sdv7 when the board's UF2 bootloader
  * bundles SoftDevice s140 v6.x (app starts at 0x26000).
  *
- * Boards: RAK4631
+ * Boards: RAK4631, ThinkNode M6
  *
  * Usage in board overlay:
  *   /delete-node/ &boot_partition;
@@ -21,6 +21,18 @@
  *   0xD4000 - 0xF4000  (128KB) LittleFS (/lfs automount)
  *   0xF4000 - 0x100000 (48KB)  UF2 bootloader (reserved)
  */
+
+/ {
+	chosen {
+		/* nRF52840 SoC DTSI defines sram0 but does NOT set zephyr,sram
+		 * in chosen. The upstream nrf52840_partition.dtsi provides it,
+		 * but custom boards that include this file directly (without
+		 * nrf52840_partition.dtsi) would get RAM = 0 in the linker
+		 * script, causing "region RAM overflowed" on the first build.
+		 * Set it here so all boards using this DTSI get it for free. */
+		zephyr,sram = &sram0;
+	};
+};
 
 &flash0 {
 	partitions {

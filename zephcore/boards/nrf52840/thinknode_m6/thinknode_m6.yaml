@@ -1,0 +1,20 @@
+identifier: thinknode_m6
+name: Elecrow ThinkNode M6 (nRF52840 + SX1262)
+type: mcu
+arch: arm
+ram: 256
+flash: 1024
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+supported:
+  - adc
+  - ble
+  - gpio
+  - i2c
+  - nvs
+  - spi
+  - usb_device
+  - watchdog
+vendor: elecrow

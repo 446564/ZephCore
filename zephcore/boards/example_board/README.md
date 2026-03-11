@@ -14,6 +14,7 @@ Supported Boards
 | T1000-E              | `west build -b t1000_e zephcore`          | UF2 drag-drop or `west flash` |
 | ThinkNode M1         | `west build -b thinknode_m1 zephcore`     | UF2 drag-drop or `west flash` |
 | ThinkNode M3         | `west build -b thinknode_m3 zephcore`     | UF2 drag-drop or `west flash` |
+| ThinkNode M6         | `west build -b thinknode_m6 zephcore`     | UF2 drag-drop or `west flash` |
 | RAK WisMesh Tag      | `west build -b rak_wismesh_tag zephcore`  | UF2 drag-drop or `west flash` |
 | Ikoka Nano 30dBm     | `west build -b ikoka_nano_30dbm zephcore` | UF2 drag-drop                 |
 
@@ -135,6 +136,25 @@ A full custom board includes:
     Kconfig.<board>                      — SoC selection
     <board>_<soc>_defconfig              — Minimal defconfig
     board.cmake                          — Flash runner config
+
+**Critical: `zephyr,sram` in the chosen node (nRF52840 only)**
+
+The nRF52840 SoC DTSI defines `sram0` but does NOT set `zephyr,sram` in
+the chosen node. Without it, the linker gets `RAM size = 0` and every
+build fails with "region 'RAM' overflowed" regardless of actual RAM use.
+
+Boards that include `<nordic/nrf52840_partition.dtsi>` get this for free.
+Boards that use `nrf52_partitions_sdv6.dtsi` or `nrf52_partitions_sdv7.dtsi`
+directly (without the upstream include) also get it now — those DTSIs set
+`zephyr,sram = &sram0` themselves.
+
+If you write a fully custom DTS that includes neither, add it yourself:
+
+    chosen {
+        zephyr,sram = &sram0;
+        zephyr,code-partition = &code_partition;
+        ...
+    };
 
 
 What Goes in board.conf

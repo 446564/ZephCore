@@ -1,0 +1,10 @@
+# Copyright (c) 2025 ZephCore
+#
+# SPDX-License-Identifier: Apache-2.0
+
+board:
+  name: thinknode_m6
+  full_name: Elecrow ThinkNode M6 (nRF52840 + SX1262)
+  vendor: elecrow
+  socs:
+  - name: nrf52840
