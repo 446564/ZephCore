@@ -34,8 +34,9 @@ public:
 	 * Caller should attempt reactive backoff when true. */
 	bool recordDupeIfTracked(uint32_t hash32, uint32_t now_ms);
 
-	/* Check if reactive extension is within cap for this entry.
-	 * Returns the max additional ms allowed, 0 if cap reached. */
+	/* Per-dupe reactive delay: returns backoff_multiplier × airtime,
+	 * clamped by hard cap minus cumulative extension so far.
+	 * Returns 0 when hard cap reached or backoff disabled. */
 	uint16_t getReactiveHeadroom(uint32_t hash32, uint32_t airtime_ms) const;
 
 	/* Record that we added reactive extension to this entry. */
@@ -66,6 +67,7 @@ private:
 	static constexpr float FLOOD_SCALE = 0.116f; /* (0.5 - 0.05) / sqrt(15) */
 	static constexpr float MAX_FLOOD_FACTOR = 2.0f;
 	static constexpr float DEFAULT_BACKOFF_MULT = 0.5f;
+	static constexpr uint32_t REACTIVE_HARD_CAP_MS = 2000;
 	static constexpr uint32_t STALE_MS = 300000;  /* 5 minutes */
 
 	struct Entry {

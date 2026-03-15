@@ -47,15 +47,13 @@ void Mesh::extendPendingRetransmit(uint32_t hash32)
 		if (pkt && pkt->isRouteFlood()
 		    && ContentionTracker::computePacketHash32(pkt) == hash32) {
 			uint32_t airtime = _radio->getEstAirtimeFor(pkt->getRawLength());
-			uint16_t headroom = _contention.getReactiveHeadroom(hash32, airtime);
-			if (headroom == 0) break;
-			uint32_t extra = _rng->nextInt(0, (int)headroom + 1);
-			/* Reschedule from NOW, not from the original EMA-based schedule.
-			 * Hearing a dupe means the channel was just used — defer from
-			 * this moment, don't compound on top of the base delay. */
-			_mgr->rescheduleOutbound(i, now + extra);
-			_contention.addReactiveExtension(hash32, (uint16_t)extra);
-			notifyTxQueued(extra);
+			uint16_t delay = _contention.getReactiveHeadroom(hash32, airtime);
+			if (delay == 0) break;
+			/* Reschedule from NOW: heard a dupe, defer by one
+			 * backoff_multiplier × airtime window per dupe. */
+			_mgr->rescheduleOutbound(i, now + delay);
+			_contention.addReactiveExtension(hash32, delay);
+			notifyTxQueued(delay);
 			break;
 		}
 	}

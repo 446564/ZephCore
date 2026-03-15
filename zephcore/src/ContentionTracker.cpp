@@ -108,11 +108,15 @@ uint16_t ContentionTracker::getReactiveHeadroom(uint32_t hash32, uint32_t airtim
 	int idx = findEntry(hash32);
 	if (idx < 0) return 0;
 
-	uint32_t cap = (uint32_t)(_backoff_multiplier * (float)airtime_ms);
-	if (_ring[idx].reactive_added_ms >= cap) return 0;
+	uint32_t per_dupe = (uint32_t)(_backoff_multiplier * (float)airtime_ms);
+	if (per_dupe == 0) return 0;
 
-	uint32_t remaining = cap - _ring[idx].reactive_added_ms;
-	return remaining > 0xFFFF ? 0xFFFF : (uint16_t)remaining;
+	/* Hard cap on total reactive extension per packet */
+	if (_ring[idx].reactive_added_ms >= REACTIVE_HARD_CAP_MS) return 0;
+
+	uint32_t remaining = REACTIVE_HARD_CAP_MS - _ring[idx].reactive_added_ms;
+	if (per_dupe > remaining) per_dupe = remaining;
+	return per_dupe > 0xFFFF ? 0xFFFF : (uint16_t)per_dupe;
 }
 
 void ContentionTracker::addReactiveExtension(uint32_t hash32, uint16_t added_ms)

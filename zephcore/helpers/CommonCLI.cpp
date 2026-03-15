@@ -122,8 +122,11 @@ void CommonCLI::loadPrefs(const char* path) {
     _prefs->rx_delay_base = constrain(_prefs->rx_delay_base, 0.0f, 20.0f);
     _prefs->tx_delay_factor = constrain(_prefs->tx_delay_factor, 0.0f, 2.0f);
     _prefs->direct_tx_delay_factor = constrain(_prefs->direct_tx_delay_factor, 0.0f, 2.0f);
-    /* Migrate uninitialized pad bytes (0.0f or NaN) to default 0.5 */
-    if (_prefs->backoff_multiplier == 0.0f || _prefs->backoff_multiplier != _prefs->backoff_multiplier) {
+    /* Migrate uninitialized pad bytes: NaN or out-of-range → default 0.5.
+     * 0.0 is valid (disables reactive backoff). Old firmware upgrading
+     * with zeroed pad bytes will get 0.0 = disabled; user can set explicitly. */
+    if (_prefs->backoff_multiplier != _prefs->backoff_multiplier ||
+        _prefs->backoff_multiplier < 0.0f || _prefs->backoff_multiplier > 10.0f) {
         _prefs->backoff_multiplier = 0.5f;
     }
     _prefs->backoff_multiplier = constrain(_prefs->backoff_multiplier, 0.0f, 2.0f);
