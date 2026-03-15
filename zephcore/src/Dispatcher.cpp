@@ -133,15 +133,19 @@ void Dispatcher::maintenanceLoop()
 	/* Noise floor calibration — one EMA tick per housekeeping cycle */
 	_radio->triggerNoiseFloorCalibrate(getInterferenceThreshold());
 
-	/* RX mode watchdog — detect if radio is stuck outside RX */
-	bool is_recv = _radio->isInRecvMode();
-	if (is_recv != prev_isrecv_mode) {
-		prev_isrecv_mode = is_recv;
-		if (!is_recv) {
+	/* RX mode watchdog — detect if radio is stuck in neither RX nor TX.
+	 * Count TX time as "active" so rapid consecutive relays on a busy
+	 * repeater don't falsely trigger the flag: the housekeeping timer
+	 * (5 s) can miss brief RX windows between TXes, leaving
+	 * radio_nonrx_start stale and firing the watchdog spuriously. */
+	bool is_active = _radio->isInRecvMode() || !_radio->isSendComplete();
+	if (is_active != prev_isrecv_mode) {
+		prev_isrecv_mode = is_active;
+		if (!is_active) {
 			radio_nonrx_start = (uint32_t)_ms->getMillis();
 		}
 	}
-	if (!is_recv && (uint32_t)_ms->getMillis() - radio_nonrx_start > 8000) {
+	if (!is_active && (uint32_t)_ms->getMillis() - radio_nonrx_start > 8000) {
 		_err_flags |= ERR_EVENT_STARTRX_TIMEOUT;
 	}
 

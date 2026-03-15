@@ -403,7 +403,7 @@ index 7b0b67f89d5..7154eb074ce 100644
  	/* Start transmission with 10 second timeout */
  	ret = sx126x_set_tx(dev, 10000);
  	if (ret < 0) {
-@@ -1038,6 +1260,121 @@ static int sx126x_lora_test_cw(const struct device *dev, uint32_t frequency,
+@@ -1038,6 +1260,126 @@ static int sx126x_lora_test_cw(const struct device *dev, uint32_t frequency,
  	return 0;
  }
  
@@ -518,6 +518,11 @@ index 7b0b67f89d5..7154eb074ce 100644
 +	if (data->rx_boost_enabled) {
 +		sx126x_set_rx_gain(dev, true);
 +	}
++
++	/* Chip is now in STANDBY.  Update state so lora_recv_async() can
++	 * transition back to RX — without this, the CAS(REST→RX) fails
++	 * because state was still SX126X_STATE_RX from before the reset. */
++	atomic_set(&data->state, SX126X_STATE_IDLE);
 +
 +	k_mutex_unlock(&data->lock);
 +}
