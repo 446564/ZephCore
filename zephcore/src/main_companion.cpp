@@ -546,16 +546,6 @@ int main(void)
 	companion_mesh.prefs.rx_duty_cycle = 1;     /* Companions: duty cycle ON by default (power save) */
 	companion_mesh.prefs.rx_boost = 1;          /* Default: boosted RX (+3dB sensitivity, +2mA) */
 
-	/* Generate default node name from hardware device ID */
-	uint8_t dev_id[8];
-	ssize_t id_len = hwinfo_get_device_id(dev_id, sizeof(dev_id));
-	if (id_len >= 4) {
-		snprintf(companion_mesh.prefs.node_name, sizeof(companion_mesh.prefs.node_name),
-			 "MeshCore-%02X%02X%02X%02X", dev_id[0], dev_id[1], dev_id[2], dev_id[3]);
-	} else {
-		strncpy(companion_mesh.prefs.node_name, "MeshCore", sizeof(companion_mesh.prefs.node_name) - 1);
-	}
-
 	/* Load prefs from storage */
 	data_store.loadPrefs(companion_mesh.prefs);
 
@@ -597,6 +587,15 @@ int main(void)
 		data_store.saveMainIdentity(self_identity);
 	}
 	companion_mesh.self_id = self_identity;
+
+	/* Set default node name from first 4 bytes of public key if not set.
+	 * Must happen after identity load so pub_key is available. */
+	if (companion_mesh.prefs.node_name[0] == '\0') {
+		snprintf(companion_mesh.prefs.node_name, sizeof(companion_mesh.prefs.node_name),
+			 "%02X%02X%02X%02X",
+			 self_identity.pub_key[0], self_identity.pub_key[1],
+			 self_identity.pub_key[2], self_identity.pub_key[3]);
+	}
 
 	/* Set callbacks */
 	companion_mesh.setWriteFrameCallback(write_frame);

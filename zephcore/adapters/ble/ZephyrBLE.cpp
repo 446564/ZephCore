@@ -35,7 +35,7 @@ LOG_MODULE_REGISTER(zephcore_ble, CONFIG_ZEPHCORE_BLE_LOG_LEVEL);
 
 /* ========== Constants ========== */
 
-#define DEVICE_NAME_MAX 24
+#define DEVICE_NAME_MAX 29
 #define FRAME_QUEUE_SIZE CONFIG_ZEPHCORE_BLE_QUEUE_SIZE
 #define BLE_TX_POWER 4
 #define BLE_TX_RETRY_MS 20
@@ -230,9 +230,8 @@ static int secure_nus_send(struct bt_conn *conn, const void *data, uint16_t len)
 static void build_device_name_and_adv(const char *name_from_prefs)
 {
 	if (name_from_prefs && name_from_prefs[0]) {
-		size_t name_len = strnlen(name_from_prefs, sizeof(device_name) - 1);
-		memcpy(device_name, name_from_prefs, name_len);
-		device_name[name_len] = '\0';
+		/* Prepend "MeshCore-" prefix so apps that filter on it can find us */
+		snprintf(device_name, sizeof(device_name), "MeshCore-%s", name_from_prefs);
 
 		/* Apple BLE Accessory Design Guidelines: device name must not
 		 * contain ':' or ';' characters. Replace with '-'.
