@@ -166,7 +166,8 @@ static void lr20xx_configure_rfswitch(void *ctx, const struct lr20xx_config *cfg
 
 		/* Set this DIO function to RF switch control */
 		lr20xx_system_set_dio_function(ctx, dio,
-					       LR20XX_SYSTEM_DIO_FUNC_RF_SWITCH);
+					       LR20XX_SYSTEM_DIO_FUNC_RF_SWITCH,
+					       LR20XX_SYSTEM_DIO_DRIVE_NONE);
 
 		/* Build the per-DIO mode bitmask:
 		 * which operational modes drive this DIO HIGH */
@@ -846,7 +847,7 @@ static int lr20xx_hw_init(struct lr20xx_data *data,
 		return -EIO;
 	}
 
-	LOG_INF("LR20xx HW:0x%02X FW:0x%04X", ver.hw, ver.fw);
+	LOG_INF("LR20xx v%u.%u", ver.major, ver.minor);
 
 	if (cfg->tcxo_voltage_mv > 0) {
 		/* Convert ms to RTC steps (31.25 us per step) */
