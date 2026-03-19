@@ -279,10 +279,11 @@ lr20xx_hal_status_t lr20xx_hal_read(const void *context, const uint8_t *command,
 		return LR20XX_HAL_STATUS_ERROR;
 	}
 
-	/* LR20xx returns 1 dummy byte + data */
-	uint8_t dummy;
+	/* LR2021 returns 2-byte Stat (16-bit) before response data.
+	 * LR11xx had 1 stat byte — LR2021 datasheet §5.4.1.2 says 16-bit. */
+	uint8_t dummy[2];
 	const struct spi_buf rx_bufs[] = {
-		{ .buf = &dummy, .len = 1 },
+		{ .buf = dummy, .len = sizeof(dummy) },
 		{ .buf = data, .len = data_length },
 	};
 	const struct spi_buf_set rx = { .buffers = rx_bufs, .count = 2 };
